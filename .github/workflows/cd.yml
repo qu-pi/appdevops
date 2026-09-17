@@ -1,0 +1,168 @@
+name: CD
+
+# Runs only after CI has passed on main — never rebuilds/retests here, just
+# reuses the commit CI already validated. This keeps main's CI fast for PRs
+# while the deploy pipeline only ever ships a commit that's green.
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types: [completed]
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
+
+jobs:
+  build-and-push:
+    name: Build & push images to GHCR
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image-tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Compute image tag
+        id: tag
+        run: echo "tag=${SHA::12}" >> "$GITHUB_OUTPUT"
+        env:
+          SHA: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push server image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./server
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/appdevops-server:${{ steps.tag.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/appdevops-server:latest
+          cache-from: type=gha,scope=server
+          cache-to: type=gha,mode=max,scope=server
+
+      - name: Build & push client image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./client
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/appdevops-client:${{ steps.tag.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/appdevops-client:latest
+          cache-from: type=gha,scope=client
+          cache-to: type=gha,mode=max,scope=client
+
+      - name: Build & push db image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./server/db
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/appdevops-db:${{ steps.tag.outputs.tag }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/appdevops-db:latest
+          cache-from: type=gha,scope=db
+          cache-to: type=gha,mode=max,scope=db
+
+  deploy-preprod:
+    name: Deploy to preprod
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment:
+      name: preprod
+      url: ${{ vars.PREPROD_URL }}
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PREPROD_SSH_HOST }}
+          username: ${{ secrets.PREPROD_SSH_USER }}
+          key: ${{ secrets.PREPROD_SSH_KEY }}
+          port: ${{ secrets.PREPROD_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd "${{ secrets.PREPROD_DEPLOY_PATH }}"
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+            export IMAGE_TAG="${{ needs.build-and-push.outputs.image-tag }}"
+            docker compose -p appdevops-preprod -f docker-compose.deploy.yml --env-file .env.preprod pull
+            docker compose -p appdevops-preprod -f docker-compose.deploy.yml --env-file .env.preprod up -d
+            docker image prune -f
+
+  e2e:
+    name: E2E tests against preprod
+    needs: deploy-preprod
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+
+      - name: Install E2E dependencies
+        working-directory: e2e
+        run: npm ci
+
+      - name: Install Playwright browsers
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        working-directory: e2e
+        env:
+          BASE_URL: ${{ vars.PREPROD_URL }}
+        run: npx playwright test
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: e2e/playwright-report/
+          retention-days: 14
+
+  deploy-prod:
+    name: Deploy to production
+    needs: [build-and-push, e2e]
+    runs-on: ubuntu-latest
+    # Requires manual approval: configure the "production" GitHub Environment
+    # with required reviewers in repo Settings -> Environments. The job waits
+    # here until someone approves it, even though E2E already passed.
+    environment:
+      name: production
+      url: ${{ vars.PRODUCTION_URL }}
+    steps:
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          script: |
+            set -e
+            cd "${{ secrets.PROD_DEPLOY_PATH }}"
+            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+            export IMAGE_TAG="${{ needs.build-and-push.outputs.image-tag }}"
+            docker compose -p appdevops-prod -f docker-compose.deploy.yml --env-file .env.prod pull
+            docker compose -p appdevops-prod -f docker-compose.deploy.yml --env-file .env.prod up -d
+            docker image prune -f
