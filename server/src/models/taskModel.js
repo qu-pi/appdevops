@@ -1,25 +1,21 @@
 import { randomUUID } from 'node:crypto'
-import { pool } from '../config/db.js'
+import { AppDataSource } from '../config/dataSource.js'
+import { Task } from '../entities/Task.js'
 
-const COLUMN_BY_FIELD = {
-  title: 'title',
-  description: 'description',
-  dueDate: 'due_date',
-  priority: 'priority',
-  category: 'category',
-  completed: 'completed',
-}
+const taskRepository = AppDataSource.getRepository(Task)
 
-function rowToTask(row) {
+const UPDATABLE_FIELDS = ['title', 'description', 'dueDate', 'priority', 'category', 'completed']
+
+function toTaskDTO(task) {
   return {
-    id: row.id,
-    title: row.title,
-    description: row.description,
-    dueDate: row.due_date ? formatDate(row.due_date) : '',
-    priority: row.priority,
-    category: row.category,
-    completed: Boolean(row.completed),
-    createdAt: row.created_at.toISOString(),
+    id: task.id,
+    title: task.title,
+    description: task.description,
+    dueDate: task.dueDate ? formatDate(task.dueDate) : '',
+    priority: task.priority,
+    category: task.category,
+    completed: Boolean(task.completed),
+    createdAt: task.createdAt.toISOString(),
   }
 }
 
@@ -28,46 +24,46 @@ function formatDate(value) {
 }
 
 export async function findAll() {
-  const [rows] = await pool.query('SELECT * FROM tasks ORDER BY created_at DESC')
-  return rows.map(rowToTask)
+  const tasks = await taskRepository.find({ order: { createdAt: 'DESC' } })
+  return tasks.map(toTaskDTO)
 }
 
 export async function findById(id) {
-  const [rows] = await pool.query('SELECT * FROM tasks WHERE id = ?', [id])
-  return rows[0] ? rowToTask(rows[0]) : null
+  const task = await taskRepository.findOneBy({ id })
+  return task ? toTaskDTO(task) : null
 }
 
 export async function create({ title, description = '', dueDate = '', priority = 'medium', category = '' }) {
-  const id = randomUUID()
-  await pool.query(
-    `INSERT INTO tasks (id, title, description, due_date, priority, category, completed)
-     VALUES (?, ?, ?, ?, ?, ?, FALSE)`,
-    [id, title.trim(), description.trim(), dueDate || null, priority, category.trim()]
-  )
-  return findById(id)
+  const task = taskRepository.create({
+    id: randomUUID(),
+    title: title.trim(),
+    description: description.trim(),
+    dueDate: dueDate || null,
+    priority,
+    category: category.trim(),
+    completed: false,
+  })
+  await taskRepository.save(task)
+  return findById(task.id)
 }
 
 export async function update(id, changes) {
-  const fields = []
-  const values = []
-
-  for (const [field, column] of Object.entries(COLUMN_BY_FIELD)) {
+  const patch = {}
+  for (const field of UPDATABLE_FIELDS) {
     if (changes[field] === undefined) continue
-    fields.push(`${column} = ?`)
-    values.push(field === 'dueDate' ? changes[field] || null : changes[field])
+    patch[field] = field === 'dueDate' ? changes[field] || null : changes[field]
   }
 
-  if (fields.length === 0) return findById(id)
-
-  values.push(id)
-  await pool.query(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`, values)
+  if (Object.keys(patch).length > 0) {
+    await taskRepository.update({ id }, patch)
+  }
   return findById(id)
 }
 
 export async function remove(id) {
-  await pool.query('DELETE FROM tasks WHERE id = ?', [id])
+  await taskRepository.delete({ id })
 }
 
 export async function removeCompleted() {
-  await pool.query('DELETE FROM tasks WHERE completed = TRUE')
+  await taskRepository.delete({ completed: true })
 }

@@ -1,0 +1,84 @@
+services:
+  db:
+    build:
+      context: ./server/db
+      dockerfile: Dockerfile
+    container_name: appdevops-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-taskmanager}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      # Bound to loopback only: never expose MySQL on the public interface.
+      # Use an SSH tunnel (ssh -L 3306:127.0.0.1:3306 user@vps) for admin access.
+      - "127.0.0.1:${DB_PORT:-3306}:3306"
+    healthcheck:
+      # --protocol=tcp forces the check against the real networked mysqld
+      # instead of MySQL's temporary init-only server, which only listens
+      # on a local socket and would otherwise report healthy too early.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--protocol=tcp", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - appnet
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: appdevops-server
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME:-taskmanager}
+      PORT: 3001
+      CLIENT_ORIGIN: ${CLIENT_ORIGIN:-http://localhost:8080}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Loopback only: the client's nginx reaches this over the internal
+      # "appnet" network; this binding is just for local debugging on the VPS.
+      - "127.0.0.1:${SERVER_PORT:-3001}:3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - appnet
+
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-/api/tasks}
+    container_name: appdevops-client
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      # Loopback only: the VPS's own nginx (with TLS) reverse-proxies to
+      # this port; the container itself is never reachable from outside.
+      - "127.0.0.1:${CLIENT_PORT:-8080}:80"
+    networks:
+      - appnet
+
+volumes:
+  db_data:
+
+networks:
+  appnet:
+    driver: bridge

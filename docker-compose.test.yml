@@ -1,0 +1,31 @@
+# Ephemeral MySQL used only to run the server's integration test suite,
+# locally or in CI. Separate from docker-compose.yml on purpose: no
+# persistent volume (tmpfs data dir -> always starts from a clean schema),
+# distinct container/port so it never collides with a real dev/prod stack.
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d --wait
+#   npm --prefix server run test:integration
+#   docker compose -f docker-compose.test.yml down -v
+
+services:
+  db-test:
+    build:
+      context: ./server/db
+      dockerfile: Dockerfile
+    container_name: appdevops-db-test
+    environment:
+      MYSQL_ROOT_PASSWORD: test_root_password
+      MYSQL_DATABASE: taskmanager
+      MYSQL_USER: test_user
+      MYSQL_PASSWORD: test_password
+    tmpfs:
+      - /var/lib/mysql
+    ports:
+      - "127.0.0.1:${TEST_DB_PORT:-3307}:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "--protocol=tcp", "-u", "root", "-ptest_root_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 20s

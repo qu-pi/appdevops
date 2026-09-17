@@ -1,0 +1,30 @@
+# Host-level nginx vhost for the VPS (NOT the nginx running inside the
+# "client" container). Copy to /etc/nginx/sites-available/appdevops,
+# adjust the domain, then:
+#
+#   sudo ln -s /etc/nginx/sites-available/appdevops /etc/nginx/sites-enabled/
+#   sudo nginx -t && sudo systemctl reload nginx
+#   sudo certbot --nginx -d your-domain.example
+#
+# certbot will rewrite this file to add the TLS server block and the
+# HTTP -> HTTPS redirect automatically; the block below is the plain-HTTP
+# starting point it needs before that.
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name your-domain.example;
+
+    # Everything -- static assets and /api/* -- is forwarded to the
+    # "client" container, whose own nginx (client/nginx.conf) serves the
+    # built SPA and reverse-proxies /api/* to the "server" container over
+    # the internal Docker network. The host only ever talks to 127.0.0.1.
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
