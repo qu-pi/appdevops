@@ -530,6 +530,11 @@ body {
   justify-content: center;
   color: transparent;
   transition: background 0.15s ease, border-color 0.15s ease;
+  /* Purely decorative overlay for the checkbox above it — without this,
+     clicks land on the checkmark/svg instead of the input underneath,
+     which real browsers paper over via <label> delegation but Playwright's
+     precise-point click doesn't, so `.check()` times out. */
+  pointer-events: none;
 }
 
 .checkmark svg {

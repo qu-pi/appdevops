@@ -1,20 +1,53 @@
-# Host-level nginx vhost for a preprod stack running ALONGSIDE production on
-# the same VPS (skip this file entirely if preprod lives on its own server —
-# there, just reuse appdevops.nginx.conf.example as-is).
+# Host-level nginx vhost for the preprod stack running ALONGSIDE production
+# on the same VPS (skip this file entirely if preprod lives on its own
+# server — there, just reuse appdevops.nginx.conf.example as-is).
 #
 # Assumes the preprod docker-compose.deploy.yml stack publishes its client
-# on 127.0.0.1:8081 (CLIENT_PORT=8081 in .env.preprod) so it never collides
-# with production's 127.0.0.1:8080.
+# on 127.0.0.1:8081 (CLIENT_PORT=8081 in .env) so it never collides with
+# production's 127.0.0.1:8080.
 #
+# Setup:
+#   sudo cp deploy/appdevops-preprod.nginx.conf.example /etc/nginx/sites-available/appdevops-preprod
 #   sudo ln -s /etc/nginx/sites-available/appdevops-preprod /etc/nginx/sites-enabled/
+#   sudo certbot certonly --nginx -d preprodappdevops.maastricht.ovh
 #   sudo nginx -t && sudo systemctl reload nginx
-#   sudo certbot --nginx -d preprod.your-domain.example
+#
+# `certonly` only obtains the certificate at the path referenced below —
+# it does NOT rewrite this file, unlike plain `certbot --nginx`. That keeps
+# this file the single source of truth instead of a certbot-edited copy.
 
 server {
     listen 80;
     listen [::]:80;
-    server_name preprod.your-domain.example;
+    server_name preprodappdevops.maastricht.ovh;
 
+    # The `certbot --nginx` plugin used below solves the HTTP-01 challenge
+    # itself (it briefly patches this block in memory) — no webroot needed.
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    http2 on;
+    server_name preprodappdevops.maastricht.ovh;
+
+    ssl_certificate /etc/letsencrypt/live/preprodappdevops.maastricht.ovh/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/preprodappdevops.maastricht.ovh/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    add_header Strict-Transport-Security "max-age=63072000" always;
+
+    # Everything -- static assets and /api/* -- is forwarded to the
+    # "client" container, whose own nginx (client/nginx.conf) serves the
+    # built SPA and reverse-proxies /api/* to the "server" container over
+    # the internal Docker network. The host only ever talks to 127.0.0.1.
     location / {
         proxy_pass http://127.0.0.1:8081;
         proxy_http_version 1.1;
