@@ -38,6 +38,8 @@ export const translations = {
     sortDue: 'Échéance',
     sortPriority: 'Priorité',
     clearCompleted: 'Effacer les terminées',
+    clearAll: 'Tout supprimer',
+    clearAllConfirm: 'Supprimer toutes les tâches ? Cette action est irréversible.',
 
     statTotal: 'Total',
     statActive: 'Active',
@@ -54,6 +56,7 @@ export const translations = {
     errUpdate: 'Impossible de modifier la tâche.',
     errDelete: 'Impossible de supprimer la tâche.',
     errClear: 'Impossible d\'effacer les tâches terminées.',
+    errClearAll: 'Impossible de supprimer toutes les tâches.',
   },
   en: {
     pageTitle: 'Task Manager',
@@ -94,6 +97,8 @@ export const translations = {
     sortDue: 'Due date',
     sortPriority: 'Priority',
     clearCompleted: 'Clear completed',
+    clearAll: 'Delete all',
+    clearAllConfirm: 'Delete all tasks? This cannot be undone.',
 
     statTotal: 'Total',
     statActive: 'Active',
@@ -110,5 +115,6 @@ export const translations = {
     errUpdate: 'Unable to update task.',
     errDelete: 'Unable to delete task.',
     errClear: 'Unable to clear completed tasks.',
+    errClearAll: 'Unable to delete all tasks.',
   },
 }

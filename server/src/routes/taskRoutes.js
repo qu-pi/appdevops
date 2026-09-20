@@ -6,6 +6,7 @@ const router = Router()
 router.get('/', TaskController.list)
 router.post('/', TaskController.create)
 router.delete('/completed', TaskController.removeCompleted)
+router.delete('/all', TaskController.removeAll)
 router.patch('/:id', TaskController.update)
 router.delete('/:id', TaskController.remove)
 

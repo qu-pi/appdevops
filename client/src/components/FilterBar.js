@@ -9,7 +9,7 @@ const STATUS_KEYS = {
   [StatusFilter.COMPLETED]: 'statusCompleted',
 }
 
-export function renderFilterBar(container, state, { onChange, onClearCompleted }) {
+export function renderFilterBar(container, state, { onChange, onClearCompleted, onClearAll }) {
   container.innerHTML = `
     <div class="filter-bar">
       <input
@@ -33,6 +33,7 @@ export function renderFilterBar(container, state, { onChange, onClearCompleted }
         <option value="priority" ${state.sort === 'priority' ? 'selected' : ''}>${t('sortPriority')}</option>
       </select>
       <button type="button" class="btn btn-ghost" data-action="clear-completed">${t('clearCompleted')}</button>
+      <button type="button" class="btn btn-danger" data-action="clear-all">${t('clearAll')}</button>
     </div>
   `
 
@@ -49,4 +50,5 @@ export function renderFilterBar(container, state, { onChange, onClearCompleted }
   })
 
   container.querySelector('[data-action="clear-completed"]').addEventListener('click', onClearCompleted)
+  container.querySelector('[data-action="clear-all"]').addEventListener('click', onClearAll)
 }

@@ -60,3 +60,12 @@ export async function removeCompleted(req, res, next) {
     next(err)
   }
 }
+
+export async function removeAll(req, res, next) {
+  try {
+    await TaskModel.removeAll()
+    res.status(204).end()
+  } catch (err) {
+    next(err)
+  }
+}

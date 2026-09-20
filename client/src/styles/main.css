@@ -328,6 +328,18 @@ body {
   color: var(--danger);
 }
 
+.btn-danger {
+  background: var(--danger-bg);
+  border-color: var(--danger-bg);
+  color: var(--danger);
+}
+
+.btn-danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
 /* Stats */
 .stats-bar {
   display: grid;

@@ -163,6 +163,10 @@ export class App {
         this.render()
       },
       onClearCompleted: () => this.taskService.clearCompleted().catch((err) => this.setError(err.message)),
+      onClearAll: () => {
+        if (!window.confirm(t('clearAllConfirm'))) return
+        this.taskService.clearAll().catch((err) => this.setError(err.message))
+      },
     })
 
     if (this.loading) {

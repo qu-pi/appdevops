@@ -67,3 +67,7 @@ export async function remove(id) {
 export async function removeCompleted() {
   await taskRepository.delete({ completed: true })
 }
+
+export async function removeAll() {
+  await taskRepository.clear()
+}

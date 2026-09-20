@@ -68,4 +68,10 @@ export class TaskService {
     await handle(res, t('errClear'))
     await this.load()
   }
+
+  async clearAll() {
+    const res = await fetch(`${API_URL}/all`, { method: 'DELETE' })
+    await handle(res, t('errClearAll'))
+    await this.load()
+  }
 }

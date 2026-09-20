@@ -71,4 +71,14 @@ describe('Task API (integration)', () => {
     expect(list.body).toHaveLength(1)
     expect(list.body[0].title).toBe('Pending')
   })
+
+  it('clears all tasks regardless of status', async () => {
+    await request(app).post('/api/tasks').send({ title: 'Done' }).expect(201)
+    await request(app).post('/api/tasks').send({ title: 'Pending' }).expect(201)
+
+    await request(app).delete('/api/tasks/all').expect(204)
+
+    const list = await request(app).get('/api/tasks').expect(200)
+    expect(list.body).toHaveLength(0)
+  })
 })
