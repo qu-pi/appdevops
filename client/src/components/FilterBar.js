@@ -1,10 +1,12 @@
+import { t } from '../utils/i18n.js'
+
 export const StatusFilter = { ALL: 'all', ACTIVE: 'active', COMPLETED: 'completed' }
 export const SortOption = { CREATED: 'created', DUE: 'due', PRIORITY: 'priority' }
 
-const STATUS_LABELS = {
-  [StatusFilter.ALL]: 'Toutes',
-  [StatusFilter.ACTIVE]: 'Actives',
-  [StatusFilter.COMPLETED]: 'Terminées',
+const STATUS_KEYS = {
+  [StatusFilter.ALL]: 'statusAll',
+  [StatusFilter.ACTIVE]: 'statusActive',
+  [StatusFilter.COMPLETED]: 'statusCompleted',
 }
 
 export function renderFilterBar(container, state, { onChange, onClearCompleted }) {
@@ -13,24 +15,24 @@ export function renderFilterBar(container, state, { onChange, onClearCompleted }
       <input
         type="search"
         class="search-input"
-        placeholder="Rechercher une tâche…"
+        placeholder="${t('searchPlaceholder')}"
         value="${state.search}"
-        aria-label="Rechercher"
+        aria-label="${t('searchLabel')}"
       />
-      <div class="filter-group" role="group" aria-label="Filtrer par statut">
-        ${Object.entries(STATUS_LABELS)
+      <div class="filter-group" role="group" aria-label="${t('statusGroupLabel')}">
+        ${Object.entries(STATUS_KEYS)
           .map(
-            ([value, label]) =>
-              `<button type="button" class="filter-btn ${state.status === value ? 'is-active' : ''}" data-status="${value}">${label}</button>`
+            ([value, key]) =>
+              `<button type="button" class="filter-btn ${state.status === value ? 'is-active' : ''}" data-status="${value}">${t(key)}</button>`
           )
           .join('')}
       </div>
-      <select class="sort-select" aria-label="Trier par">
-        <option value="created" ${state.sort === 'created' ? 'selected' : ''}>Plus récentes</option>
-        <option value="due" ${state.sort === 'due' ? 'selected' : ''}>Échéance</option>
-        <option value="priority" ${state.sort === 'priority' ? 'selected' : ''}>Priorité</option>
+      <select class="sort-select" aria-label="${t('sortLabel')}">
+        <option value="created" ${state.sort === 'created' ? 'selected' : ''}>${t('sortCreated')}</option>
+        <option value="due" ${state.sort === 'due' ? 'selected' : ''}>${t('sortDue')}</option>
+        <option value="priority" ${state.sort === 'priority' ? 'selected' : ''}>${t('sortPriority')}</option>
       </select>
-      <button type="button" class="btn btn-ghost" data-action="clear-completed">Effacer les terminées</button>
+      <button type="button" class="btn btn-ghost" data-action="clear-completed">${t('clearCompleted')}</button>
     </div>
   `
 

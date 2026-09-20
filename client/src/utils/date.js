@@ -1,7 +1,11 @@
-export function formatDate(isoDate) {
+export function formatDate(isoDate, locale = 'fr') {
   if (!isoDate) return ''
   const date = new Date(`${isoDate}T00:00:00`)
-  return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+  return date.toLocaleDateString(locale === 'en' ? 'en-GB' : 'fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
 }
 
 export function isOverdue(isoDate, completed) {

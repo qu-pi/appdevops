@@ -1,3 +1,5 @@
+import { t } from '../utils/i18n.js'
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/tasks'
 
 async function handle(res, fallbackMessage) {
@@ -25,7 +27,7 @@ export class TaskService {
 
   async load() {
     const res = await fetch(API_URL)
-    this.#tasks = await handle(res, 'Impossible de charger les tâches.')
+    this.#tasks = await handle(res, t('errLoad'))
     this.#emit()
   }
 
@@ -35,7 +37,7 @@ export class TaskService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     })
-    await handle(res, "Impossible d'ajouter la tâche.")
+    await handle(res, t('errAdd'))
     await this.load()
   }
 
@@ -45,7 +47,7 @@ export class TaskService {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(changes),
     })
-    await handle(res, 'Impossible de modifier la tâche.')
+    await handle(res, t('errUpdate'))
     await this.load()
   }
 
@@ -57,13 +59,13 @@ export class TaskService {
 
   async remove(id) {
     const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' })
-    await handle(res, 'Impossible de supprimer la tâche.')
+    await handle(res, t('errDelete'))
     await this.load()
   }
 
   async clearCompleted() {
     const res = await fetch(`${API_URL}/completed`, { method: 'DELETE' })
-    await handle(res, 'Impossible d\'effacer les tâches terminées.')
+    await handle(res, t('errClear'))
     await this.load()
   }
 }

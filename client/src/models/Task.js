@@ -4,8 +4,8 @@ export const Priority = {
   HIGH: 'high',
 }
 
-export const PRIORITY_LABELS = {
-  [Priority.LOW]: 'Basse',
-  [Priority.MEDIUM]: 'Moyenne',
-  [Priority.HIGH]: 'Haute',
+export const PRIORITY_KEYS = {
+  [Priority.LOW]: 'priorityLow',
+  [Priority.MEDIUM]: 'priorityMedium',
+  [Priority.HIGH]: 'priorityHigh',
 }

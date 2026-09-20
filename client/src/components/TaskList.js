@@ -1,4 +1,5 @@
 import { taskItemTemplate } from './TaskItem.js'
+import { t } from '../utils/i18n.js'
 
 export function renderTaskList(container, tasks, { onToggle, onDelete }) {
   if (tasks.length === 0) {
@@ -8,7 +9,7 @@ export function renderTaskList(container, tasks, { onToggle, onDelete }) {
           <rect x="4" y="4" width="16" height="16" rx="4" />
           <path d="M8.5 12.5l2.5 2.5 4.5-5" />
         </svg>
-        <p>Aucune tâche à afficher.</p>
+        <p>${t('emptyState')}</p>
       </div>
     `
     return

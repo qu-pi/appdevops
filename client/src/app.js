@@ -5,6 +5,7 @@ import { renderFilterBar, StatusFilter, SortOption } from './components/FilterBa
 import { renderStatsBar } from './components/StatsBar.js'
 import { Priority } from './models/Task.js'
 import { getEffectiveTheme, toggleTheme } from './utils/theme.js'
+import { getEffectiveLocale, toggleLocale, t } from './utils/i18n.js'
 
 const SUN_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>`
 const MOON_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>`
@@ -19,24 +20,29 @@ export class App {
     this.loading = true
     this.error = null
 
+    document.documentElement.setAttribute('lang', getEffectiveLocale())
+
     this.root.innerHTML = `
       <header class="app-header">
-        <button type="button" id="theme-toggle" class="theme-toggle"></button>
+        <div class="header-actions">
+          <button type="button" id="lang-toggle" class="lang-toggle"></button>
+          <button type="button" id="theme-toggle" class="theme-toggle"></button>
+        </div>
         <div class="app-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 12l2 2 4-4" />
             <rect x="3" y="4" width="18" height="17" rx="4" />
           </svg>
         </div>
-        <h1>Mes tâches</h1>
-        <p class="app-subtitle">Organisez votre journée, une tâche à la fois.</p>
+        <h1 id="app-title"></h1>
+        <p class="app-subtitle" id="app-subtitle"></p>
       </header>
       <main class="app-main">
         <div id="error-banner" class="error-banner" hidden></div>
-        <section id="task-form" class="panel" aria-label="Ajouter une tâche"></section>
+        <section id="task-form" class="panel"></section>
         <section id="stats-bar"></section>
-        <section id="filter-bar" class="panel" aria-label="Filtrer les tâches"></section>
-        <section id="task-list" aria-label="Liste des tâches"></section>
+        <section id="filter-bar" class="panel"></section>
+        <section id="task-list"></section>
       </main>
     `
 
@@ -45,20 +51,48 @@ export class App {
     this.statsEl = this.root.querySelector('#stats-bar')
     this.filterEl = this.root.querySelector('#filter-bar')
     this.listEl = this.root.querySelector('#task-list')
+    this.titleEl = this.root.querySelector('#app-title')
+    this.subtitleEl = this.root.querySelector('#app-subtitle')
     this.themeToggleEl = this.root.querySelector('#theme-toggle')
+    this.langToggleEl = this.root.querySelector('#lang-toggle')
 
-    this.updateThemeToggle()
     this.themeToggleEl.addEventListener('click', () => {
       toggleTheme()
       this.updateThemeToggle()
     })
 
-    renderTaskForm(this.formEl, {
-      onAdd: (data) => this.taskService.add(data).catch((err) => this.setError(err.message)),
+    this.langToggleEl.addEventListener('click', () => {
+      toggleLocale()
+      this.renderStaticText()
+      this.render()
     })
+
+    this.renderStaticText()
 
     this.taskService.subscribe(() => this.render())
     this.init()
+  }
+
+  renderStaticText() {
+    document.title = t('pageTitle')
+    this.titleEl.textContent = t('appTitle')
+    this.subtitleEl.textContent = t('appSubtitle')
+    this.formEl.setAttribute('aria-label', t('addTaskLabel'))
+    this.filterEl.setAttribute('aria-label', t('filterTaskLabel'))
+    this.listEl.setAttribute('aria-label', t('taskListLabel'))
+
+    this.updateThemeToggle()
+    this.updateLangToggle()
+
+    renderTaskForm(this.formEl, {
+      onAdd: (data) => this.taskService.add(data).catch((err) => this.setError(err.message)),
+    })
+  }
+
+  updateLangToggle() {
+    this.langToggleEl.textContent = t('langToggle')
+    this.langToggleEl.setAttribute('aria-label', t('langToggleLabel'))
+    this.langToggleEl.setAttribute('title', t('langToggleLabel'))
   }
 
   async init() {
@@ -76,8 +110,9 @@ export class App {
   updateThemeToggle() {
     const isDark = getEffectiveTheme() === 'dark'
     this.themeToggleEl.innerHTML = isDark ? SUN_ICON : MOON_ICON
-    this.themeToggleEl.setAttribute('aria-label', isDark ? 'Passer en mode clair' : 'Passer en mode sombre')
-    this.themeToggleEl.setAttribute('title', isDark ? 'Passer en mode clair' : 'Passer en mode sombre')
+    const label = t(isDark ? 'themeToLight' : 'themeToDark')
+    this.themeToggleEl.setAttribute('aria-label', label)
+    this.themeToggleEl.setAttribute('title', label)
   }
 
   setError(message) {
@@ -90,16 +125,16 @@ export class App {
     const { search, status, sort } = this.state
     let tasks = this.taskService.getAll()
 
-    if (status === StatusFilter.ACTIVE) tasks = tasks.filter((t) => !t.completed)
-    if (status === StatusFilter.COMPLETED) tasks = tasks.filter((t) => t.completed)
+    if (status === StatusFilter.ACTIVE) tasks = tasks.filter((task) => !task.completed)
+    if (status === StatusFilter.COMPLETED) tasks = tasks.filter((task) => task.completed)
 
     const query = search.trim().toLowerCase()
     if (query) {
       tasks = tasks.filter(
-        (t) =>
-          t.title.toLowerCase().includes(query) ||
-          t.description.toLowerCase().includes(query) ||
-          t.category.toLowerCase().includes(query)
+        (task) =>
+          task.title.toLowerCase().includes(query) ||
+          task.description.toLowerCase().includes(query) ||
+          task.category.toLowerCase().includes(query)
       )
     }
 
@@ -131,7 +166,7 @@ export class App {
     })
 
     if (this.loading) {
-      this.listEl.innerHTML = `<p class="empty-state">Chargement des tâches…</p>`
+      this.listEl.innerHTML = `<p class="empty-state">${t('loading')}</p>`
       return
     }
 
