@@ -15,7 +15,8 @@ export function getStoredLocale() {
 export function getEffectiveLocale() {
   const stored = getStoredLocale()
   if (SUPPORTED.includes(stored)) return stored
-  return navigator.language?.toLowerCase().startsWith('en') ? 'en' : DEFAULT_LOCALE
+  const browserLocale = typeof navigator !== 'undefined' ? navigator.language : undefined
+  return browserLocale?.toLowerCase().startsWith('en') ? 'en' : DEFAULT_LOCALE
 }
 
 export function setLocale(locale) {
