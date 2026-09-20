@@ -2,6 +2,17 @@
 <html lang="fr">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // Applied before first paint to avoid a flash of the wrong theme;
+      // duplicated (not imported) from src/utils/theme.js on purpose since
+      // module scripts execute too late to prevent the flash.
+      try {
+        var storedTheme = localStorage.getItem('appdevops-theme')
+        if (storedTheme === 'light' || storedTheme === 'dark') {
+          document.documentElement.setAttribute('data-theme', storedTheme)
+        }
+      } catch (e) {}
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />

@@ -4,6 +4,10 @@ import { renderTaskList } from './components/TaskList.js'
 import { renderFilterBar, StatusFilter, SortOption } from './components/FilterBar.js'
 import { renderStatsBar } from './components/StatsBar.js'
 import { Priority } from './models/Task.js'
+import { getEffectiveTheme, toggleTheme } from './utils/theme.js'
+
+const SUN_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" /></svg>`
+const MOON_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>`
 
 const PRIORITY_ORDER = { [Priority.HIGH]: 0, [Priority.MEDIUM]: 1, [Priority.LOW]: 2 }
 
@@ -17,6 +21,7 @@ export class App {
 
     this.root.innerHTML = `
       <header class="app-header">
+        <button type="button" id="theme-toggle" class="theme-toggle"></button>
         <div class="app-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M9 12l2 2 4-4" />
@@ -40,6 +45,13 @@ export class App {
     this.statsEl = this.root.querySelector('#stats-bar')
     this.filterEl = this.root.querySelector('#filter-bar')
     this.listEl = this.root.querySelector('#task-list')
+    this.themeToggleEl = this.root.querySelector('#theme-toggle')
+
+    this.updateThemeToggle()
+    this.themeToggleEl.addEventListener('click', () => {
+      toggleTheme()
+      this.updateThemeToggle()
+    })
 
     renderTaskForm(this.formEl, {
       onAdd: (data) => this.taskService.add(data).catch((err) => this.setError(err.message)),
@@ -59,6 +71,13 @@ export class App {
       this.loading = false
       this.render()
     }
+  }
+
+  updateThemeToggle() {
+    const isDark = getEffectiveTheme() === 'dark'
+    this.themeToggleEl.innerHTML = isDark ? SUN_ICON : MOON_ICON
+    this.themeToggleEl.setAttribute('aria-label', isDark ? 'Passer en mode clair' : 'Passer en mode sombre')
+    this.themeToggleEl.setAttribute('title', isDark ? 'Passer en mode clair' : 'Passer en mode sombre')
   }
 
   setError(message) {

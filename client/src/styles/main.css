@@ -40,8 +40,11 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Dark palette: applied by OS preference, unless a manual choice (the
+   "data-theme" attribute, toggled in the header and persisted to
+   localStorage — see src/utils/theme.js) overrides it either way. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --text: #c6c2d1;
     --text-h: #f5f3fa;
     --text-muted: #8f8a9c;
@@ -72,6 +75,36 @@
   }
 }
 
+:root[data-theme='dark'] {
+  --text: #c6c2d1;
+  --text-h: #f5f3fa;
+  --text-muted: #8f8a9c;
+  --bg: #121016;
+  --surface: #18161e;
+  --surface-alt: #1e1c25;
+  --border: #2b2833;
+
+  --accent: #a89bfb;
+  --accent-bg: rgba(168, 155, 251, 0.14);
+  --accent-border: rgba(168, 155, 251, 0.35);
+  --accent-contrast: #17111f;
+
+  --danger: #fb7185;
+  --danger-bg: rgba(251, 113, 133, 0.14);
+  --success: #4ade80;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 10px -6px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 2px 4px rgba(0, 0, 0, 0.3), 0 10px 20px -10px rgba(0, 0, 0, 0.4);
+
+  --priority-low: #4ade80;
+  --priority-low-bg: rgba(74, 222, 128, 0.14);
+  --priority-medium: #fbbf24;
+  --priority-medium-bg: rgba(251, 191, 36, 0.14);
+  --priority-high: #fb7185;
+  --priority-high-bg: rgba(251, 113, 133, 0.14);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -90,8 +123,41 @@ body {
 
 /* Header */
 .app-header {
+  position: relative;
   text-align: center;
   margin-bottom: 40px;
+}
+
+.theme-toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.theme-toggle svg {
+  width: 18px;
+  height: 18px;
 }
 
 .app-icon {

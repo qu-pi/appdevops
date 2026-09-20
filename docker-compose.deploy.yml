@@ -1,14 +1,23 @@
-# Deployment compose file for preprod AND production. Unlike docker-compose.yml
-# (which builds images from source for local dev), this file only ever pulls
-# pre-built images from GHCR — the server never builds anything, it just runs
-# what CI already tested and pushed. Used for both environments via `-p` to
-# namespace containers/volumes/networks and a per-environment --env-file:
+# Single deployment compose file, shared by preprod AND production. Unlike
+# docker-compose.yml (which builds images from source for local dev), this
+# file only ever pulls pre-built images from GHCR — the server never builds
+# anything, it just runs what CI already tested and pushed.
 #
-#   docker compose -p appdevops-preprod -f docker-compose.deploy.yml --env-file .env.preprod pull
-#   docker compose -p appdevops-preprod -f docker-compose.deploy.yml --env-file .env.preprod up -d
+# The CD workflow (.github/workflows/cd.yml) copies this exact file to both
+# server folders on every deploy, so it's never edited by hand on a server:
 #
-#   docker compose -p appdevops-prod    -f docker-compose.deploy.yml --env-file .env.prod    pull
-#   docker compose -p appdevops-prod    -f docker-compose.deploy.yml --env-file .env.prod    up -d
+#   ~/appdevops/preprod/docker-compose.deploy.yml + .env   (project appdevops-preprod)
+#   ~/appdevops/prod/docker-compose.deploy.yml    + .env   (project appdevops-prod)
+#
+#   docker compose -p appdevops-preprod -f docker-compose.deploy.yml --env-file .env pull
+#   docker compose -p appdevops-preprod -f docker-compose.deploy.yml --env-file .env up -d
+#
+#   docker compose -p appdevops-prod    -f docker-compose.deploy.yml --env-file .env pull
+#   docker compose -p appdevops-prod    -f docker-compose.deploy.yml --env-file .env up -d
+#
+# The separate folders are what actually keep the two environments apart, so
+# each just has its own plain ".env" — created once by hand on the server and
+# never committed (see deploy/.env.deploy.example).
 #
 # IMAGE_TAG is set by the CD workflow (the git sha it just built) so preprod
 # and production always run the exact same, already-tested artifact.

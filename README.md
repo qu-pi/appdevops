@@ -37,22 +37,51 @@ Variables):
 
 **Repository secrets** (same page, Secrets tab):
 
+No personal token is needed to pull images: the deploy jobs' built-in
+`GITHUB_TOKEN` (already used to push in `build-and-push`) is passed to each
+server over SSH to `docker login ghcr.io` for the `pull`, scoped read-only via
+each job's `permissions: packages: read`. It's repo-scoped and expires with
+the run, so it works for any contributor and never needs to be rotated by
+hand.
+
 | Secret | Purpose |
 |---|---|
-| `GHCR_TOKEN` | PAT with `read:packages` scope, used by each server to `docker login ghcr.io` and pull images |
 | `PREPROD_SSH_HOST` / `PROD_SSH_HOST` | SSH host of each server |
 | `PREPROD_SSH_USER` / `PROD_SSH_USER` | SSH user with Docker permissions |
 | `PREPROD_SSH_KEY` / `PROD_SSH_KEY` | Private key for that user |
 | `PREPROD_SSH_PORT` / `PROD_SSH_PORT` | Optional, defaults to 22 |
-| `PREPROD_DEPLOY_PATH` / `PROD_DEPLOY_PATH` | Absolute path on the server containing `docker-compose.deploy.yml` and its `.env.preprod` / `.env.prod` |
+| `PREPROD_DEPLOY_PATH` / `PROD_DEPLOY_PATH` | Absolute path to each environment's folder on the server, e.g. `/home/deploy/appdevops/preprod` and `/home/deploy/appdevops/prod` |
+
+Both environments live on the same server, side by side, under one parent
+folder:
+
+```
+~/appdevops/
+├── preprod/
+│   ├── docker-compose.deploy.yml   ← synced automatically by cd.yml
+│   └── .env                        ← created by hand, never committed
+└── prod/
+    ├── docker-compose.deploy.yml   ← synced automatically by cd.yml
+    └── .env                        ← created by hand, never committed
+```
+
+`docker-compose.deploy.yml` is a single file in this repo — the CD workflow
+creates both folders (`mkdir -p`) and copies the same file into each of them
+on every deploy, so nothing needs to be uploaded by hand and the server can
+never drift from what's in git.
 
 ### One-time server setup (each of preprod and prod)
 
+The folders and `docker-compose.deploy.yml` are created automatically on the
+first run of `cd.yml`. The only manual step is the `.env` file, since it
+holds secrets that must never be committed:
+
 ```bash
-mkdir -p /opt/appdevops && cd /opt/appdevops
-# copy docker-compose.deploy.yml here (it's the only file the server needs)
-cp deploy/.env.deploy.example .env.preprod   # or .env.prod
-# edit .env.preprod / .env.prod with real passwords, ports, CLIENT_ORIGIN
+mkdir -p ~/appdevops/preprod ~/appdevops/prod   # optional: cd.yml creates these too
+cp deploy/.env.deploy.example ~/appdevops/preprod/.env
+cp deploy/.env.deploy.example ~/appdevops/prod/.env
+# edit each .env with real passwords and, since both stacks share this
+# server, a distinct CLIENT_PORT / SERVER_PORT / DB_PORT per environment
 ```
 
 The very first deploy for each environment happens automatically the next

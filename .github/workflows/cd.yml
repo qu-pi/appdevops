@@ -83,10 +83,40 @@ jobs:
     name: Deploy to preprod
     needs: build-and-push
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
     environment:
       name: preprod
       url: ${{ vars.PREPROD_URL }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # Creates ~/appdevops/preprod (and its parent) on first run; a no-op
+      # afterwards. Idempotent, so it's safe to run on every deploy.
+      - name: Ensure deploy folder exists
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PREPROD_SSH_HOST }}
+          username: ${{ secrets.PREPROD_SSH_USER }}
+          key: ${{ secrets.PREPROD_SSH_KEY }}
+          port: ${{ secrets.PREPROD_SSH_PORT || 22 }}
+          script: mkdir -p "${{ secrets.PREPROD_DEPLOY_PATH }}"
+
+      # Same docker-compose.deploy.yml as prod (see that job) — kept in sync
+      # automatically on every deploy so the server never drifts from git.
+      - name: Sync docker-compose.deploy.yml
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PREPROD_SSH_HOST }}
+          username: ${{ secrets.PREPROD_SSH_USER }}
+          key: ${{ secrets.PREPROD_SSH_KEY }}
+          port: ${{ secrets.PREPROD_SSH_PORT || 22 }}
+          source: docker-compose.deploy.yml
+          target: ${{ secrets.PREPROD_DEPLOY_PATH }}
+
       - name: SSH deploy
         uses: appleboy/ssh-action@v1
         with:
@@ -97,10 +127,10 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.PREPROD_DEPLOY_PATH }}"
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             export IMAGE_TAG="${{ needs.build-and-push.outputs.image-tag }}"
-            docker compose -p appdevops-preprod -f docker-compose.deploy.yml --env-file .env.preprod pull
-            docker compose -p appdevops-preprod -f docker-compose.deploy.yml --env-file .env.preprod up -d
+            docker compose -p appdevops-preprod -f docker-compose.deploy.yml --env-file .env pull
+            docker compose -p appdevops-preprod -f docker-compose.deploy.yml --env-file .env up -d
             docker image prune -f
 
   e2e:
@@ -147,10 +177,40 @@ jobs:
     # Requires manual approval: configure the "production" GitHub Environment
     # with required reviewers in repo Settings -> Environments. The job waits
     # here until someone approves it, even though E2E already passed.
+    permissions:
+      contents: read
+      packages: read
     environment:
       name: production
       url: ${{ vars.PRODUCTION_URL }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # Creates ~/appdevops/prod (and its parent) on first run; a no-op
+      # afterwards. Idempotent, so it's safe to run on every deploy.
+      - name: Ensure deploy folder exists
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          script: mkdir -p "${{ secrets.PROD_DEPLOY_PATH }}"
+
+      # Same file as preprod — a single docker-compose.deploy.yml, versioned
+      # once in git, pushed to both server folders on every deploy.
+      - name: Sync docker-compose.deploy.yml
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.PROD_SSH_HOST }}
+          username: ${{ secrets.PROD_SSH_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          port: ${{ secrets.PROD_SSH_PORT || 22 }}
+          source: docker-compose.deploy.yml
+          target: ${{ secrets.PROD_DEPLOY_PATH }}
+
       - name: SSH deploy
         uses: appleboy/ssh-action@v1
         with:
@@ -161,8 +221,8 @@ jobs:
           script: |
             set -e
             cd "${{ secrets.PROD_DEPLOY_PATH }}"
-            echo "${{ secrets.GHCR_TOKEN }}" | docker login ghcr.io -u "${{ github.repository_owner }}" --password-stdin
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
             export IMAGE_TAG="${{ needs.build-and-push.outputs.image-tag }}"
-            docker compose -p appdevops-prod -f docker-compose.deploy.yml --env-file .env.prod pull
-            docker compose -p appdevops-prod -f docker-compose.deploy.yml --env-file .env.prod up -d
+            docker compose -p appdevops-prod -f docker-compose.deploy.yml --env-file .env pull
+            docker compose -p appdevops-prod -f docker-compose.deploy.yml --env-file .env up -d
             docker image prune -f
