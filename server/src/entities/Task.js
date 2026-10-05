@@ -9,6 +9,12 @@ export const Task = new EntitySchema({
       length: 36,
       primary: true,
     },
+    userId: {
+      name: 'user_id',
+      type: 'char',
+      length: 36,
+      nullable: true,
+    },
     title: {
       type: 'varchar',
       length: 120,
@@ -46,5 +52,6 @@ export const Task = new EntitySchema({
   indices: [
     { name: 'idx_tasks_completed', columns: ['completed'] },
     { name: 'idx_tasks_due_date', columns: ['dueDate'] },
+    { name: 'idx_tasks_user_id', columns: ['userId'] },
   ],
 })

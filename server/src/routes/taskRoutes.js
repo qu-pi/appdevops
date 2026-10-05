@@ -1,7 +1,10 @@
 import { Router } from 'express'
 import * as TaskController from '../controllers/taskController.js'
+import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
+
+router.use(requireAuth)
 
 router.get('/', TaskController.list)
 router.post('/', TaskController.create)

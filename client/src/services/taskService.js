@@ -1,12 +1,5 @@
 import { t } from '../utils/i18n.js'
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api/tasks'
-
-async function handle(res, fallbackMessage) {
-  if (res.ok) return res.status === 204 ? null : res.json()
-  const body = await res.json().catch(() => null)
-  throw new Error(body?.error || fallbackMessage)
-}
+import { request } from './api.js'
 
 export class TaskService {
   #tasks = []
@@ -25,29 +18,24 @@ export class TaskService {
     return [...this.#tasks]
   }
 
+  // Forget the current user's tasks (on logout) without hitting the API.
+  reset() {
+    this.#tasks = []
+    this.#emit()
+  }
+
   async load() {
-    const res = await fetch(API_URL)
-    this.#tasks = await handle(res, t('errLoad'))
+    this.#tasks = await request('/tasks', {}, t('errLoad'))
     this.#emit()
   }
 
   async add(data) {
-    const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    })
-    await handle(res, t('errAdd'))
+    await request('/tasks', { method: 'POST', body: data }, t('errAdd'))
     await this.load()
   }
 
   async update(id, changes) {
-    const res = await fetch(`${API_URL}/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(changes),
-    })
-    await handle(res, t('errUpdate'))
+    await request(`/tasks/${id}`, { method: 'PATCH', body: changes }, t('errUpdate'))
     await this.load()
   }
 
@@ -58,20 +46,17 @@ export class TaskService {
   }
 
   async remove(id) {
-    const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' })
-    await handle(res, t('errDelete'))
+    await request(`/tasks/${id}`, { method: 'DELETE' }, t('errDelete'))
     await this.load()
   }
 
   async clearCompleted() {
-    const res = await fetch(`${API_URL}/completed`, { method: 'DELETE' })
-    await handle(res, t('errClear'))
+    await request('/tasks/completed', { method: 'DELETE' }, t('errClear'))
     await this.load()
   }
 
   async clearAll() {
-    const res = await fetch(`${API_URL}/all`, { method: 'DELETE' })
-    await handle(res, t('errClearAll'))
+    await request('/tasks/all', { method: 'DELETE' }, t('errClearAll'))
     await this.load()
   }
 }

@@ -2,6 +2,7 @@ import 'reflect-metadata'
 import dotenv from 'dotenv'
 import { DataSource } from 'typeorm'
 import { Task } from '../entities/Task.js'
+import { User } from '../entities/User.js'
 
 dotenv.config()
 dotenv.config({ path: '.env.local', override: true })
@@ -13,6 +14,6 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
   database: process.env.DB_NAME || 'taskmanager',
-  entities: [Task],
+  entities: [Task, User],
   synchronize: false,
 })

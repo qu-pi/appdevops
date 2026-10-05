@@ -70,6 +70,11 @@ services:
       DB_NAME: ${DB_NAME:-taskmanager}
       PORT: 3001
       CLIENT_ORIGIN: ${CLIENT_ORIGIN}
+      # Signs login tokens: compose refuses to start without it.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
+      # Optional: admin account created (or promoted) at server boot.
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     depends_on:
       db:
         condition: service_healthy

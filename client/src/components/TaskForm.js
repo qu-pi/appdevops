@@ -45,7 +45,9 @@ export function renderTaskForm(container, { onAdd }) {
     event.preventDefault()
     const data = Object.fromEntries(new FormData(form).entries())
     if (!data.title?.trim()) return
-    onAdd(data)
+    // onAdd returns false when it can't take the task yet (visitor not
+    // logged in): keep what was typed instead of wiping the form.
+    if (onAdd(data) === false) return
     form.reset()
     container.querySelector('#task-title').focus()
   })

@@ -1,6 +1,7 @@
 import { PRIORITY_KEYS } from '../models/Task.js'
 import { formatDate, isOverdue } from '../utils/date.js'
 import { t, getEffectiveLocale } from '../utils/i18n.js'
+import { escapeHtml } from '../utils/html.js'
 
 export function taskItemTemplate(task) {
   const overdue = isOverdue(task.dueDate, task.completed)
@@ -36,10 +37,4 @@ export function taskItemTemplate(task) {
       </div>
     </li>
   `
-}
-
-function escapeHtml(str) {
-  const div = document.createElement('div')
-  div.textContent = str
-  return div.innerHTML
 }
