@@ -12,8 +12,6 @@
     - name: Installer les paquets nécessaires
       apt:
         name:
-          - docker.io
-          - docker-compose-plugin
           - nginx
           - git
         state: present
