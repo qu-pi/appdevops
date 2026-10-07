@@ -41,3 +41,26 @@
         owner: debian
         group: debian
         mode: '0755'
+    - name: Copier la configuration Nginx
+      template:
+        src: templates/appdevops.nginx.conf.j2
+        dest: /etc/nginx/sites-available/appdevops
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Activer le site Nginx
+      file:
+        src: /etc/nginx/sites-available/appdevops
+        dest: /etc/nginx/sites-enabled/appdevops
+        state: link
+        force: true
+
+    - name: Tester la configuration Nginx
+      command: nginx -t
+      changed_when: false
+
+    - name: Recharger Nginx
+      service:
+        name: nginx
+        state: reloaded
