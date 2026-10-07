@@ -1,0 +1,45 @@
+---
+- name: Configuration serveur AppDevOps
+  hosts: app
+  become: true
+
+  tasks:
+    - name: Mettre à jour le cache APT
+      apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Installer les paquets nécessaires
+      apt:
+        name:
+          - docker.io
+          - docker-compose-plugin
+          - nginx
+          - git
+        state: present
+
+    - name: Démarrer Docker
+      service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Démarrer Nginx
+      service:
+        name: nginx
+        state: started
+        enabled: true
+
+    - name: Ajouter debian au groupe docker
+      user:
+        name: debian
+        groups: docker
+        append: true
+
+    - name: Créer le dossier de l'application
+      file:
+        path: /var/www/appdevops
+        state: directory
+        owner: debian
+        group: debian
+        mode: '0755'
