@@ -41,25 +41,28 @@
         owner: debian
         group: debian
         mode: '0755'
-    - name: Copier la configuration Nginx
+
+    - name: Déployer la configuration Nginx AppDevOps
       template:
-        src: templates/appdevops.nginx.conf.j2
-        dest: /etc/nginx/sites-available/appdevops
+        src: templates/web3q3.nginx.conf.j2
+        dest: /etc/nginx/sites-available/web3q3
         owner: root
         group: root
         mode: '0644'
+      notify: Recharger Nginx
 
-    - name: Activer le site Nginx
+    - name: Activer la configuration Nginx
       file:
-        src: /etc/nginx/sites-available/appdevops
-        dest: /etc/nginx/sites-enabled/appdevops
+        src: /etc/nginx/sites-available/web3q3
+        dest: /etc/nginx/sites-enabled/web3q3
         state: link
         force: true
 
-    - name: Tester la configuration Nginx
+    - name: Vérifier la configuration Nginx
       command: nginx -t
       changed_when: false
 
+  handlers:
     - name: Recharger Nginx
       service:
         name: nginx
